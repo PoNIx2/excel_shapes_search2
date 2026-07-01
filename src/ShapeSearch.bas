@@ -40,10 +40,10 @@ Public Sub SearchShapesInExcelFiles()
 
     ValidateInputs rootPath, keyword, caseFlag, wsSample
 
-    Dim sampleStyle As TSampleStyle
+    Dim sampleStyles() As TSampleStyle
 
     If caseFlag = "オン" Or caseFlag = "オフ" Then
-        sampleStyle = GetSampleStyle(wsSample)
+        sampleStyles = GetSampleStyles(wsSample)
     End If
 
     PrepareResultSheet wsResult
@@ -54,7 +54,7 @@ Public Sub SearchShapesInExcelFiles()
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
 
-    ScanFolderRecursive rootPath, keyword, caseFlag, sampleStyle, wsResult, rowOut
+    ScanFolderRecursive rootPath, keyword, caseFlag, sampleStyles, wsResult, rowOut
 
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
@@ -123,7 +123,7 @@ End Sub
 ' 指定フォルダ以下を再帰的にたどり、
 ' Excelファイルを見つけるたびにブック単位の走査処理を実行する
 Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As String, ByVal caseFlag As String, _
-                                ByRef sampleStyle As TSampleStyle, _
+                                ByRef sampleStyles() As TSampleStyle, _
                                 ByVal wsResult As Worksheet, ByRef rowOut As Long)
     Dim fso As Object
     Dim folder As Object
@@ -136,20 +136,20 @@ Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As Str
     For Each file In folder.Files
         If IsExcelFile(CStr(file.Path)) Then
             If LCase$(CStr(file.Path)) <> LCase$(ThisWorkbook.FullName) Then
-                ScanWorkbook CStr(file.Path), keyword, caseFlag, sampleStyle, wsResult, rowOut
+                ScanWorkbook CStr(file.Path), keyword, caseFlag, sampleStyles, wsResult, rowOut
             End If
         End If
     Next file
 
     For Each subFolder In folder.SubFolders
-        ScanFolderRecursive CStr(subFolder.Path), keyword, caseFlag, sampleStyle, wsResult, rowOut
+        ScanFolderRecursive CStr(subFolder.Path), keyword, caseFlag, sampleStyles, wsResult, rowOut
     Next subFolder
 End Sub
 
 ' 1つのExcelブックを開き、全シート・全図形を走査して
 ' 条件に一致した図形情報を検索結果シートへ1行ずつ追加する
 Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal caseFlag As String, _
-                         ByRef sampleStyle As TSampleStyle, _
+                         ByRef sampleStyles() As TSampleStyle, _
                          ByVal wsResult As Worksheet, ByRef rowOut As Long)
     On Error GoTo SAFE_EXIT
 
@@ -163,7 +163,7 @@ Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal 
     For Each ws In wb.Worksheets
         For Each shp In ws.Shapes
             shpText = GetShapeText(shp)
-            If ShapeMatches(shp, shpText, keyword, caseFlag, sampleStyle) Then
+            If ShapeMatches(shp, shpText, keyword, caseFlag, sampleStyles) Then
                 wsResult.Cells(rowOut, 1).Value = wb.Name
                 wsResult.Cells(rowOut, 2).Value = ws.Name
                 wsResult.Cells(rowOut, 3).Value = shpText
@@ -181,13 +181,13 @@ End Sub
 ' 図形が検索条件に一致するかを判定する
 ' （判例フラグがオン/オフならスタイル一致判定、無効なら文字列部分一致判定）
 Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal keyword As String, ByVal caseFlag As String, _
-                              ByRef sampleStyle As TSampleStyle) As Boolean
+                              ByRef sampleStyles() As TSampleStyle) As Boolean
     If caseFlag = "オン" Or caseFlag = "オフ" Then
         Dim currentStyle As TSampleStyle
         Dim styleEq As Boolean
 
         currentStyle = GetShapeStyle(shp)
-        styleEq = CompareStyle(sampleStyle, currentStyle)
+        styleEq = MatchesAnySampleStyle(sampleStyles, currentStyle)
 
         Select Case caseFlag
             Case "オン"
@@ -205,12 +205,31 @@ Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal
     End If
 End Function
 
-' 判例シートの先頭図形をサンプルとして取得し、
-' 比較用のスタイル情報（塗り・線）を返す
-Private Function GetSampleStyle(ByVal wsSample As Worksheet) As TSampleStyle
-    Dim shp As Shape
-    Set shp = wsSample.Shapes(1)
-    GetSampleStyle = GetShapeStyle(shp)
+' 判例シートの全図形をサンプルとして取得し、
+' 比較用のスタイル情報（塗り・線）の配列を返す
+Private Function GetSampleStyles(ByVal wsSample As Worksheet) As TSampleStyle()
+    Dim styles() As TSampleStyle
+    Dim i As Long
+
+    ReDim styles(1 To wsSample.Shapes.Count)
+
+    For i = 1 To wsSample.Shapes.Count
+        styles(i) = GetShapeStyle(wsSample.Shapes(i))
+    Next i
+
+    GetSampleStyles = styles
+End Function
+
+' 候補図形のスタイルが判例シート上のいずれかのサンプルスタイルに一致するかを判定する
+Private Function MatchesAnySampleStyle(ByRef sampleStyles() As TSampleStyle, ByRef currentStyle As TSampleStyle) As Boolean
+    Dim i As Long
+
+    For i = LBound(sampleStyles) To UBound(sampleStyles)
+        If CompareStyle(sampleStyles(i), currentStyle) Then
+            MatchesAnySampleStyle = True
+            Exit Function
+        End If
+    Next i
 End Function
 
 ' 図形からスタイル情報（塗り有無/色、線有無/色/破線種別）を抽出して返す
