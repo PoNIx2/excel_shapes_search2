@@ -39,11 +39,9 @@ Public Sub SearchShapesInExcelFiles()
     ValidateInputs rootPath, keyword, caseFlag, wsSample
 
     Dim sampleStyle As TSampleStyle
-    Dim useSampleStyle As Boolean
 
     If caseFlag = "オン" Or caseFlag = "オフ" Then
         sampleStyle = GetSampleStyle(wsSample)
-        useSampleStyle = True
     End If
 
     PrepareResultSheet wsResult
@@ -54,7 +52,7 @@ Public Sub SearchShapesInExcelFiles()
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
 
-    ScanFolderRecursive rootPath, keyword, caseFlag, useSampleStyle, sampleStyle, wsResult, rowOut
+    ScanFolderRecursive rootPath, keyword, caseFlag, sampleStyle, wsResult, rowOut
 
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
@@ -116,7 +114,7 @@ Private Sub PrepareResultSheet(ByVal ws As Worksheet)
 End Sub
 
 Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As String, ByVal caseFlag As String, _
-                                ByVal useSampleStyle As Boolean, ByRef sampleStyle As TSampleStyle, _
+                                ByRef sampleStyle As TSampleStyle, _
                                 ByVal wsResult As Worksheet, ByRef rowOut As Long)
     Dim fso As Object
     Dim folder As Object
@@ -129,18 +127,18 @@ Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As Str
     For Each file In folder.Files
         If IsExcelFile(CStr(file.Path)) Then
             If LCase$(CStr(file.Path)) <> LCase$(ThisWorkbook.FullName) Then
-                ScanWorkbook CStr(file.Path), keyword, caseFlag, useSampleStyle, sampleStyle, wsResult, rowOut
+                ScanWorkbook CStr(file.Path), keyword, caseFlag, sampleStyle, wsResult, rowOut
             End If
         End If
     Next file
 
     For Each subFolder In folder.SubFolders
-        ScanFolderRecursive CStr(subFolder.Path), keyword, caseFlag, useSampleStyle, sampleStyle, wsResult, rowOut
+        ScanFolderRecursive CStr(subFolder.Path), keyword, caseFlag, sampleStyle, wsResult, rowOut
     Next subFolder
 End Sub
 
 Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal caseFlag As String, _
-                         ByVal useSampleStyle As Boolean, ByRef sampleStyle As TSampleStyle, _
+                         ByRef sampleStyle As TSampleStyle, _
                          ByVal wsResult As Worksheet, ByRef rowOut As Long)
     On Error GoTo SAFE_EXIT
 
@@ -154,7 +152,7 @@ Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal 
     For Each ws In wb.Worksheets
         For Each shp In ws.Shapes
             shpText = GetShapeText(shp)
-            If ShapeMatches(shp, shpText, keyword, caseFlag, useSampleStyle, sampleStyle) Then
+            If ShapeMatches(shp, shpText, keyword, caseFlag, sampleStyle) Then
                 wsResult.Cells(rowOut, 1).Value = wb.Name
                 wsResult.Cells(rowOut, 2).Value = ws.Name
                 wsResult.Cells(rowOut, 3).Value = shpText
@@ -170,14 +168,14 @@ SAFE_EXIT:
 End Sub
 
 Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal keyword As String, ByVal caseFlag As String, _
-                              ByVal useSampleStyle As Boolean, ByRef sampleStyle As TSampleStyle) As Boolean
-    If useSampleStyle And (caseFlag = "オン" Or caseFlag = "オフ") Then
+                              ByRef sampleStyle As TSampleStyle) As Boolean
+    If caseFlag = "オン" Or caseFlag = "オフ" Then
         Dim currentStyle As TSampleStyle
-        currentStyle = GetShapeStyle(shp)
-    
         Dim styleEq As Boolean
+
+        currentStyle = GetShapeStyle(shp)
         styleEq = CompareStyle(sampleStyle, currentStyle)
-    
+
         Select Case caseFlag
             Case "オン"
                 ShapeMatches = styleEq
