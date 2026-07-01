@@ -171,6 +171,24 @@ End Sub
 
 Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal keyword As String, ByVal caseFlag As String, _
                               ByVal useSampleStyle As Boolean, ByRef sampleStyle As TSampleStyle) As Boolean
+    If useSampleStyle Then
+        Dim currentStyle As TSampleStyle
+        currentStyle = GetShapeStyle(shp)
+    
+        Dim styleEq As Boolean
+        styleEq = CompareStyle(sampleStyle, currentStyle)
+    
+        Select Case caseFlag
+            Case "オン"
+                ShapeMatches = styleEq
+            Case "オフ"
+                ShapeMatches = Not styleEq
+            Case Else
+                ShapeMatches = False
+        End Select
+        Exit Function
+    End If
+
     Dim textOk As Boolean
     If Len(keyword) = 0 Then
         textOk = True
@@ -182,26 +200,7 @@ Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal
         ShapeMatches = False
         Exit Function
     End If
-
-    If Not useSampleStyle Then
-        ShapeMatches = True
-        Exit Function
-    End If
-
-    Dim currentStyle As TSampleStyle
-    currentStyle = GetShapeStyle(shp)
-
-    Dim styleEq As Boolean
-    styleEq = CompareStyle(sampleStyle, currentStyle)
-
-    Select Case caseFlag
-        Case "オン"
-            ShapeMatches = styleEq
-        Case "オフ"
-            ShapeMatches = Not styleEq
-        Case Else
-            ShapeMatches = textOk
-    End Select
+    ShapeMatches = True
 End Function
 
 Private Function GetSampleStyle(ByVal wsSample As Worksheet) As TSampleStyle
