@@ -17,6 +17,8 @@ Private Const CELL_ROOT As String = "B2"
 Private Const CELL_TEXT As String = "B3"
 Private Const CELL_FLAG As String = "B4"
 
+' 設定シートの条件をもとにフォルダ配下のExcelファイルを再帰的に走査し、
+' 図形の文字列またはスタイル一致条件に合う図形を検索結果シートへ出力するメイン処理
 Public Sub SearchShapesInExcelFiles()
     On Error GoTo EH
 
@@ -66,6 +68,8 @@ EH:
     MsgBox "エラー: " & Err.Description, vbExclamation
 End Sub
 
+' 入力値（ルートパス・判例フラグ・必須条件）を検証し、
+' 条件不備があれば原因別のエラーを送出する
 Private Sub ValidateInputs(ByVal rootPath As String, ByVal keyword As String, ByVal caseFlag As String, ByVal wsSample As Worksheet)
     If Len(rootPath) = 0 Then
         Err.Raise vbObjectError + 1001, , "ルートパス(B2)は必須です。"
@@ -92,6 +96,8 @@ Private Sub ValidateInputs(ByVal rootPath As String, ByVal keyword As String, By
     End If
 End Sub
 
+' 判例フラグの入力ゆれ（ON/OFF/空文字など）を正規化して
+' 「オン」「オフ」「無効」のいずれかへ変換する
 Private Function NormalizeFlag(ByVal s As String) As String
     Select Case s
         Case "ON", "On", "on", "オン"
@@ -105,6 +111,7 @@ Private Function NormalizeFlag(ByVal s As String) As String
     End Select
 End Function
 
+' 検索結果シートを初期化し、ヘッダー行を設定する
 Private Sub PrepareResultSheet(ByVal ws As Worksheet)
     ws.Cells.Clear
     ws.Range("A1").Value = "ファイル名"
@@ -113,6 +120,8 @@ Private Sub PrepareResultSheet(ByVal ws As Worksheet)
     ws.Rows(1).Font.Bold = True
 End Sub
 
+' 指定フォルダ以下を再帰的にたどり、
+' Excelファイルを見つけるたびにブック単位の走査処理を実行する
 Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As String, ByVal caseFlag As String, _
                                 ByRef sampleStyle As TSampleStyle, _
                                 ByVal wsResult As Worksheet, ByRef rowOut As Long)
@@ -137,6 +146,8 @@ Private Sub ScanFolderRecursive(ByVal folderPath As String, ByVal keyword As Str
     Next subFolder
 End Sub
 
+' 1つのExcelブックを開き、全シート・全図形を走査して
+' 条件に一致した図形情報を検索結果シートへ1行ずつ追加する
 Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal caseFlag As String, _
                          ByRef sampleStyle As TSampleStyle, _
                          ByVal wsResult As Worksheet, ByRef rowOut As Long)
@@ -167,6 +178,8 @@ SAFE_EXIT:
     On Error GoTo 0
 End Sub
 
+' 図形が検索条件に一致するかを判定する
+' （判例フラグがオン/オフならスタイル一致判定、無効なら文字列部分一致判定）
 Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal keyword As String, ByVal caseFlag As String, _
                               ByRef sampleStyle As TSampleStyle) As Boolean
     If caseFlag = "オン" Or caseFlag = "オフ" Then
@@ -192,12 +205,15 @@ Private Function ShapeMatches(ByVal shp As Shape, ByVal shpText As String, ByVal
     End If
 End Function
 
+' 判例シートの先頭図形をサンプルとして取得し、
+' 比較用のスタイル情報（塗り・線）を返す
 Private Function GetSampleStyle(ByVal wsSample As Worksheet) As TSampleStyle
     Dim shp As Shape
     Set shp = wsSample.Shapes(1)
     GetSampleStyle = GetShapeStyle(shp)
 End Function
 
+' 図形からスタイル情報（塗り有無/色、線有無/色/破線種別）を抽出して返す
 Private Function GetShapeStyle(ByVal shp As Shape) As TSampleStyle
     Dim st As TSampleStyle
 
@@ -215,6 +231,8 @@ Private Function GetShapeStyle(ByVal shp As Shape) As TSampleStyle
     GetShapeStyle = st
 End Function
 
+' 2つのスタイル情報を比較し、
+' 塗り・線の有無と各属性がすべて一致する場合のみTrueを返す
 Private Function CompareStyle(ByRef a As TSampleStyle, ByRef b As TSampleStyle) As Boolean
     If a.HasFill <> b.HasFill Then Exit Function
     If a.HasLine <> b.HasLine Then Exit Function
@@ -231,6 +249,8 @@ Private Function CompareStyle(ByRef a As TSampleStyle, ByRef b As TSampleStyle) 
     CompareStyle = True
 End Function
 
+' 図形内の文字列を取得する
+' （TextFrame2を優先し、取得できなければTextFrameを参照）
 Private Function GetShapeText(ByVal shp As Shape) As String
     On Error Resume Next
     If shp.TextFrame2.HasText Then
@@ -246,12 +266,14 @@ Private Function GetShapeText(ByVal shp As Shape) As String
     GetShapeText = ""
 End Function
 
+' ファイル拡張子からExcelファイル（xls/xlsx/xlsm）かどうかを判定する
 Private Function IsExcelFile(ByVal filePath As String) As Boolean
     Dim ext As String
     ext = LCase$(Mid$(filePath, InStrRev(filePath, ".") + 1))
     IsExcelFile = (ext = "xlsx" Or ext = "xlsm" Or ext = "xls")
 End Function
 
+' 指定名のシートをブックから取得し、存在しない場合はエラーを送出する
 Private Function GetSheetOrError(ByVal wb As Workbook, ByVal sheetName As String) As Worksheet
     On Error GoTo EH
     Set GetSheetOrError = wb.Worksheets(sheetName)
