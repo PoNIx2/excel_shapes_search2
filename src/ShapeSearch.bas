@@ -161,6 +161,7 @@ Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal 
     Set wb = Workbooks.Open(Filename:=wbPath, UpdateLinks:=False, ReadOnly:=True, AddToMru:=False)
 
     For Each ws In wb.Worksheets
+        ' 非表示シート（Hidden / VeryHidden）は検索対象外とする
         If ws.Visible = xlSheetVisible Then
             For Each shp In ws.Shapes
                 shpText = GetShapeText(shp)
