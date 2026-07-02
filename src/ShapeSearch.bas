@@ -161,15 +161,17 @@ Private Sub ScanWorkbook(ByVal wbPath As String, ByVal keyword As String, ByVal 
     Set wb = Workbooks.Open(Filename:=wbPath, UpdateLinks:=False, ReadOnly:=True, AddToMru:=False)
 
     For Each ws In wb.Worksheets
-        For Each shp In ws.Shapes
-            shpText = GetShapeText(shp)
-            If ShapeMatches(shp, shpText, keyword, caseFlag, sampleStyles) Then
-                wsResult.Cells(rowOut, 1).Value = wb.Name
-                wsResult.Cells(rowOut, 2).Value = ws.Name
-                wsResult.Cells(rowOut, 3).Value = shpText
-                rowOut = rowOut + 1
-            End If
-        Next shp
+        If ws.Visible = xlSheetVisible Then
+            For Each shp In ws.Shapes
+                shpText = GetShapeText(shp)
+                If ShapeMatches(shp, shpText, keyword, caseFlag, sampleStyles) Then
+                    wsResult.Cells(rowOut, 1).Value = wb.Name
+                    wsResult.Cells(rowOut, 2).Value = ws.Name
+                    wsResult.Cells(rowOut, 3).Value = shpText
+                    rowOut = rowOut + 1
+                End If
+            Next shp
+        End If
     Next ws
 
 SAFE_EXIT:
